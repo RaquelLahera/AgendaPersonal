@@ -1,0 +1,25 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.AgendaPersonal" parent="Theme.MaterialComponents.DayNight">
+        <!-- Colores primarios. -->
+        <item name="colorPrimary">#0B57D0</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Colores secundarios -->
+        <item name="actionBarStyle">@style/BarraBlanca</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.MaterialComponents.Light</item>
+
+        <!-- Barra de batería y reloj del móvil -->
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- Desactivar mayúsculas automáticas en todos los botones y AlertDialogs -->
+        <item name="textAllCaps">false</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- Pintar la barra superior de blanco -->
+    <style name="BarraBlanca" parent="Widget.MaterialComponents.ActionBar.Solid">
+        <item name="background">@color/white</item>
+    </style>
+</resources>
