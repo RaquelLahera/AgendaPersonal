@@ -11,6 +11,6 @@ data class Contacto(
     val id: Int = 0,
     val usuario: String, // Declarar el usuario conectado
     val nombre: String,
-    val telefono: Int,
+    val telefono: String, // Para soportar prefijos
     val email: String,
 )

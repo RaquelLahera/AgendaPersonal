@@ -13,6 +13,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 
 class LoginActivity : AppCompatActivity() {
 
@@ -51,11 +52,8 @@ class LoginActivity : AppCompatActivity() {
     private fun recuperarUltimaSesion() {
         lifecycleScope.launch {
             userPrefer.credenciales.collect { datosContacto ->
-                if (datosContacto.sesionActiva == true) {
-                    val intent = Intent(this@LoginActivity, AgendaActivity::class.java)
-                    intent.putExtra("CLAVE_SESION_ACTIVA", datosContacto.usuario)
-                    startActivity(intent)
-                    finish()
+                if (datosContacto.sesionActiva && datosContacto.usuario.isNotEmpty()) {
+                    irAgenda(datosContacto.usuario)
                 }
             }
         }
@@ -75,17 +73,20 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
+        // Encriptación SHA-256 obligatoria
+        val contHash = encriptarSHA256(cont)
+
         // Comprobamos los datos del usuario
         lifecycleScope.launch(Dispatchers.IO) {
 
             val datosGuardados = userPrefer.credenciales.first()
 
             if (datosGuardados.usuario.isEmpty()) {
-                userPrefer.guardarSesion(us, cont)
+                userPrefer.guardarSesion(us, contHash)
                 irAgenda(us)
 
-            } else if (datosGuardados.usuario == us && datosGuardados.contraseña == cont) {
-                userPrefer.guardarSesion(us, cont)
+            } else if (datosGuardados.usuario == us && datosGuardados.contraseña == contHash) {
+                userPrefer.guardarSesion(us, contHash)
                 irAgenda(us)
 
             } else {
@@ -99,9 +100,15 @@ class LoginActivity : AppCompatActivity() {
 
     // Método para ir a la agenda
     private fun irAgenda(usuario: String) {
-        val intent = Intent(this@LoginActivity, AgendaActivity::class.java)
-        intent.putExtra("CLAVE_SESION_ACTIVA", usuario)
-        startActivity(intent)
-        finish()
+        val intent = Intent(this@LoginActivity, AgendaActivity::class.java).apply {
+            putExtra("CLAVE_SESION_ACTIVA", usuario)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+    }
+
+    // Método para encriptar
+    private fun encriptarSHA256(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

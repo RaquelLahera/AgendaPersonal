@@ -27,4 +27,8 @@ interface ContactoDAO {
     // Método para filtrar solo por el usuario conectado
     @Query("SELECT * FROM contactos WHERE usuario = :conectado ORDER BY nombre ASC")
     fun obtenerContactos(conectado: String): Flow<List<Contacto>>
+
+    // Consulta específica para la edición robusta por ID
+    @Query("SELECT * FROM contactos WHERE id = :id LIMIT 1")
+    suspend fun obtenerContactoPorId(id: Int): Contacto?
 }

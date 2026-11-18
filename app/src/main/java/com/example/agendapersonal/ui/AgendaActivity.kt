@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -30,6 +31,16 @@ class AgendaActivity : AppCompatActivity() {
     private lateinit var userPrefer: UserPreferences
 
     private var usuarioActivo: String = ""
+
+    // Uso de registerForActivityResult para capturar el resultado y mostrar el Snackbar correctamente al volver
+    private val contactoLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val mensajeExito = result.data?.getStringExtra("MENSAJE_RESULTADO") ?: "Operación completada"
+            mensaje(mensajeExito)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,23 +70,21 @@ class AgendaActivity : AppCompatActivity() {
 
         // Inicializamos el adaptador y declaramos lo que hace cada acción al pulsar
         adaptador = ContactoAdapter(
-            pulsar = { contactoSelecionado ->
-                val intent = Intent(this@AgendaActivity, NuevoContactoActivity::class.java)
-                intent.putExtra("ID_CONTACTO", contactoSelecionado.id)
-                intent.putExtra("NOMBRE_CONTACTO", contactoSelecionado.nombre)
-                intent.putExtra("TELEFONO_CONTACTO", contactoSelecionado.telefono)
-                intent.putExtra("EMAIL_CONTACTO", contactoSelecionado.email)
-                intent.putExtra("CLAVE_SESION_ACTIVA", usuarioActivo)
-                startActivity(intent)
+            pulsar = { contactoSeleccionado ->
+                // Pasamos únicamente el ID del contacto
+                val intent = Intent(this@AgendaActivity, NuevoContactoActivity::class.java).apply {
+                    putExtra("ID_CONTACTO", contactoSeleccionado.id)
+                    putExtra("CLAVE_SESION_ACTIVA", usuarioActivo)
+                }
+                contactoLauncher.launch(intent)
             },
             mantener = { contactoSeleccionado ->
                 val opciones = arrayOf("Eliminar")
-
                 AlertDialog.Builder(this)
                     .setItems(opciones) { _, _ ->
                         AlertDialog.Builder(this)
                             .setTitle("Eliminar contacto")
-                            .setMessage("¿Seguro que quieres eliminar a " + contactoSeleccionado.nombre + "?")
+                            .setMessage("¿Seguro que quieres eliminar a ${contactoSeleccionado.nombre}?")
                             .setPositiveButton("Eliminar") { _, _ ->
                                 lifecycleScope.launch(Dispatchers.IO) {
                                     dao.borrarContacto(contactoSeleccionado)
@@ -88,7 +97,6 @@ class AgendaActivity : AppCompatActivity() {
                             .show()
                     }
                     .show()
-
             }
         )
         binding.listaContactos.adapter = adaptador

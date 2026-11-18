@@ -1,5 +1,6 @@
 package com.example.agendapersonal.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -18,10 +19,11 @@ import kotlinx.coroutines.withContext
 
 class NuevoContactoActivity : AppCompatActivity() {
 
-    // Declaramos el binding, el dao y el usuario activo
+    // Declaramos el binding, el dao, el usuario activo y su id
     private lateinit var binding: ActivityNuevoContactoBinding
     private lateinit var dao: ContactoDAO
     private var usuarioActivo: String = ""
+    private var contactoId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,15 +47,32 @@ class NuevoContactoActivity : AppCompatActivity() {
 
         // Recogemos los datos de LoginActivity
         usuarioActivo = intent.getStringExtra("CLAVE_SESION_ACTIVA") ?: "Anónimo"
-
+        contactoId = intent.getIntExtra("ID_CONTACTO", 0)
         // Inicializamos dao
         dao = AgendaDB.obtenerBD(this).contactoDAO()
 
+        // Edición robusta: si hay ID, cargamos los datos directamente de la BD
+        if (contactoId != 0) {
+            title = "Editar Contacto"
+            cargarContactoPorId(contactoId)
+        }
+
         // Llamamos al botón de crear
         crearContacto()
+    }
 
-        // Llamamos a editar contacto por si se necesitara desde AgendaActivity
-        editarContacto()
+    // Método para cargar por id
+    private fun cargarContactoPorId(id: Int) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val contactoBD = dao.obtenerContactoPorId(id)
+            contactoBD?.let { c ->
+                withContext(Dispatchers.Main) {
+                    binding.tfNombre.setText(c.nombre)
+                    binding.tfTelefono.setText(c.telefono)
+                    binding.tfEmail.setText(c.email)
+                }
+            }
+        }
     }
 
     // Le damos funcionalidad al botón "atrás"/fecla para volver
@@ -65,7 +84,6 @@ class NuevoContactoActivity : AppCompatActivity() {
     // Método para crear un nuevo contacto
     private fun crearContacto() {
         binding.btGuardar.setOnClickListener {
-            val id = intent.getIntExtra("ID_CONTACTO", 0)
             val nombre = binding.tfNombre.text.toString().trim()
             val telefono = binding.tfTelefono.text.toString().trim()
             val email = binding.tfEmail.text.toString().trim()
@@ -78,10 +96,10 @@ class NuevoContactoActivity : AppCompatActivity() {
 
             // Declaramos el nuevo contacto
             val nuevoContacto = Contacto(
-                id = id,
+                id = contactoId,
                 usuario = usuarioActivo,
                 nombre = nombre,
-                telefono = telefono.toInt(),
+                telefono = telefono, // Almacenamos como String para soportar prefijos
                 email = email
             )
 
@@ -90,30 +108,14 @@ class NuevoContactoActivity : AppCompatActivity() {
                 dao.insertarContacto(nuevoContacto)
 
                 withContext(Dispatchers.Main) {
-                    vaciar()
-                    mensaje("Contacto insertado correctamente.")
+                    // Preparamos el resultado para que la Agenda muestre el Snackbar de éxito de forma limpia
+                    val resultadoIntent = Intent().apply {
+                        putExtra("MENSAJE_RESULTADO", if (contactoId == 0) "Contacto insertado correctamente." else "Contacto actualizado correctamente.")
+                    }
+                    setResult(RESULT_OK, resultadoIntent)
                     finish()
                 }
             }
-        }
-    }
-
-    // Declaramos los elementos que cogemos al editar un contacto
-    private fun editarContacto() {
-
-        val id = intent.getIntExtra("ID_CONTACTO", 0)
-
-        // Si tenemos un contacto real, no el id=0 por defecto, ejecutamos el cambio
-        if (id != 0) {
-            title = "Editar Contacto"
-            val nom = intent.getStringExtra("NOMBRE_CONTACTO")
-            val tel = intent.getIntExtra("TELEFONO_CONTACTO", 0).toString()
-            val em = intent.getStringExtra("EMAIL_CONTACTO")
-            intent.putExtra("CLAVE_SESION_ACTIVA", usuarioActivo)
-
-            binding.tfNombre.setText(nom)
-            binding.tfTelefono.setText(tel)
-            binding.tfEmail.setText(em)
         }
     }
 
@@ -121,12 +123,5 @@ class NuevoContactoActivity : AppCompatActivity() {
     private fun mensaje(texto: String) {
         Snackbar.make(binding.root, texto, Snackbar.LENGTH_SHORT).setAnchorView(binding.btGuardar)
             .show()
-    }
-
-    // Método para vaciar. Ponemos ? por seguridad, por si no fuera un texto
-    private fun vaciar() {
-        binding.tfNombre.text?.clear()
-        binding.tfTelefono.text?.clear()
-        binding.tfEmail.text?.clear()
     }
 }
